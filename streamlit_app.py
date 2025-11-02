@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
-from datetime import datetime
 import time
 import math
+from datetime import datetime
 
 # ---------- CONFIG ----------
 TOP_N_STOCKS = 150
@@ -41,6 +41,7 @@ def add_indicators(df):
     df = df.copy()
     df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
     df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
+
     delta = df['Close'].diff()
     up = delta.clip(lower=0)
     down = -1 * delta.clip(upper=0)
@@ -71,6 +72,7 @@ def fetch_bulk_deals():
 
 def scan_top_picks(symbols):
     picks = []
+
     for sym in symbols:
         hist = fetch_history(sym, period="60d", interval="1d")
         if hist is None or len(hist) < 30:
@@ -79,15 +81,18 @@ def scan_top_picks(symbols):
         hist = add_indicators(hist)
         today = hist.iloc[-1]
 
-        avg_vol = hist['Volume'][-21:-1].mean() if len(hist) >= 22 else hist['Volume'].mean()
-        vol_flag = unusual_volume(today['Volume'], avg_vol)
-        ema_flag = today['EMA20'] > today['EMA50']
+        # Ensure single numeric values
+        today_vol = float(today['Volume'])
+        avg_vol = float(hist['Volume'][-21:-1].mean()) if len(hist) >= 22 else float(hist['Volume'].mean())
+
+        vol_flag = today_vol > (2 * avg_vol if avg_vol > 0 else 0)
+
+        ema20 = float(today['EMA20'])
+        ema50 = float(today['EMA50'])
+        ema_flag = ema20 > ema50
 
         rsi = float(today.get('RSI', np.nan))
-        rsi_flag = False
-        if not math.isnan(rsi):
-            if 50 < rsi < 80:
-                rsi_flag = True
+        rsi_flag = not math.isnan(rsi) and (50 < rsi < 80)
 
         reason_parts = []
         if vol_flag:
@@ -101,8 +106,8 @@ def scan_top_picks(symbols):
             picks.append({
                 "symbol": sym,
                 "close": float(today['Close']),
-                "vol": int(today['Volume']),
-                "avg_vol": int(avg_vol) if not math.isnan(avg_vol) else None,
+                "vol": int(today_vol),
+                "avg_vol": int(avg_vol),
                 "reasons": ", ".join(reason_parts)
             })
 
@@ -110,6 +115,7 @@ def scan_top_picks(symbols):
 
     if not picks:
         return pd.DataFrame()
+
     dfp = pd.DataFrame(picks).sort_values(by=['vol'], ascending=False)
     return dfp.head(10)
 
