@@ -100,17 +100,19 @@ def scan_top_picks(symbols):
         avg_vol = hist['Volume'][-21:-1].mean() if len(hist) >= 22 else hist['Volume'].mean()
         vol_flag = unusual_volume(today['Volume'], avg_vol)
         ema_flag = today['EMA20'] > today['EMA50']
-                rsi = float(today.get('RSI', np.nan))
+        rsi = float(today.get('RSI', np.nan))
         rsi_flag = False
         if not math.isnan(rsi):
-            if 50 < rsi < 80:
-                rsi_flag = True
+        if 50 < rsi < 80:
+        rsi_flag = True
 
         reason_parts = []
-        if vol_flag: reason_parts.append("Volume spike")
-        if ema_flag: reason_parts.append("20>50 EMA")
-        if rsi_flag: reason_parts.append(f"RSI {int(rsi)}")
-        if reason_parts:
+        if vol_flag:
+    reason_parts.append("Volume spike")
+if ema_flag:
+    reason_parts.append("20>50 EMA")
+if rsi_flag:
+    reason_parts.append(f"RSI {int(rsi)}")
             picks.append({
                 "symbol": sym,
                 "close": float(today['Close']),
